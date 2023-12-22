@@ -4,8 +4,8 @@ import glob
 import numpy as np
 from music21 import converter, instrument, note, chord
 from keras.utils import np_utils
-from keras.models import Sequential
 from keras.layers import LSTM
+from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Dropout
 from keras.layers import Activation
@@ -13,11 +13,13 @@ from keras.layers import BatchNormalization as BatchNorm
 from keras.callbacks import ModelCheckpoint
 
 
+def train_model():
 
-
-
-
-
+    notes_array = get_notes()
+    n_names = len(set(notes_array))
+    net_input, net_output = prep_sequences(notes_array, n_names)
+    model = create_model(net_input, n_names)
+    train(model, net_input, net_output)
 
 def get_notes():
     ''' parse through MIDI files and store all the data
@@ -57,7 +59,7 @@ def get_notes():
 """ Below we convert the categorical data stored in get_notes
 into numerical data using a mapping function """
 
-def prep_sequences(notes_array, n_vocab):
+def prep_sequences(notes_array, n_names):
     ''' Prepare the sequences of note and chord objects into
     inputs that can be used to train our LSTM Neural Net'''
 
@@ -83,7 +85,7 @@ def prep_sequences(notes_array, n_vocab):
 
     # adjust input format for LSTM Neural Net layers
     net_input = np.reshape(net_input, (note_patterns, sequence_len, 1))
-    net_input = net_input / float(n_vocab)
+    net_input = net_input / float(n_names)
     net_output = np_utils.to_categorical(net_output)
 
     #return input and output sequences
@@ -95,7 +97,7 @@ the LSTM layers, dropout layers, connected layers and the
 Activation later where the activation function for the NN
 is found"""
 
-def create_model(net_input, n_vocab):
+def create_model(net_input, n_names):
 
     model = Sequential()
 
@@ -112,7 +114,7 @@ def create_model(net_input, n_vocab):
     model.add(LSTM(256))
     model.add(Dense(256))
     model.add(Dropout(0.3))
-    model.add(Dense(n_vocab))
+    model.add(Dense(n_names))
     # activation layer
     model.add(Activation('softmax'))
 
@@ -136,3 +138,6 @@ def train(model, net_input, net_output):
 
     #train the NN with 200 iterations and a batch size of 64
     model.fit(net_input, net_output, epochs=200, batch_size=64, callbacks=callbacks_list)
+
+if __name__ == '__main__':
+    train_model()
