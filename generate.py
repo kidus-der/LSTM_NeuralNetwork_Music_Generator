@@ -57,3 +57,115 @@ def prep_sequences(notes_array, pitchnames, n_names):
 
     return (net_input, norm_input)
 
+''' Here we create our NN and shape the layers using Keras 
+ and load the weights saved during the training phase into
+ the model'''
+def create_model(net_input, n_names):
+
+    model = Sequential()
+
+    # first layer
+    model.add(LSTM(
+        256, input_shape=(net_input.shape[1], net_input.shape[2]), 
+        return_sequences= True))
+    # second layer
+    model.add(Dropout(0.3))
+    # third layer(second LSTM layer)
+    model.add(LSTM(256, return_sequences= True))
+    # fourth layer
+    model.add(Dropout(0.3))
+    # fifth layer
+    model.add(LSTM(256))
+    # sixth layer
+    model.add(BatchNorm())
+    model.add(Dropout(0.3))
+    # seventh layer
+    model.add(Dense(256))
+    # eighth layer
+    model.add(Activation('relu'))
+    # ninth layer
+    model.add(BatchNorm())
+    model.add(Dropout(0.3))
+    # tenth layer
+    model.add(Dense(n_names))
+    # eleventh layer
+    model.add(Activation('softmax'))
+    # compile model
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+
+    model.load_weights('weights-from-training.hdf5')
+
+
+
+'''Here we have a helper function that generates the notes
+(note objects) which will be used by our model'''
+
+def gen_notes(model, net_input, pitchnames, n_names):
+
+    # pick a random sequence from the input as a starting point for the prediction
+    start = np.random.randint(0, len(net_input)-1)
+
+    # define the sequence length and the note pattern
+    note_pattern = net_input[start]
+
+    # generate notes
+    for note_index in range(500):
+
+        # reshape the input to be used by the NN
+        note_pattern = np.reshape(note_pattern, (1, len(note_pattern), 1))
+        note_pattern = note_pattern / float(n_names)
+
+        # predict the next note
+        prediction = model.predict(note_pattern, verbose=0)
+
+        # get the index of the note with the highest probability
+        index = np.argmax(prediction)
+
+        # get the note with the highest probability
+        result = pitchnames[index]
+
+        # add the note to the output
+        note_pattern.append(index)
+
+    return note_pattern
+
+'''below we convert prtediction output to note objects
+ then create a MIDI file'''
+def gen_midi(predict_output):
+
+    offset = 0
+    notes_output = []
+
+    # analyze the predicted output then form note objects
+    for scheme in predict_output:
+
+        #if the scheme from the output is a chord:
+        if ('.' in scheme) or scheme.isdigit():
+            note_from_chord = scheme.split('.')
+            notes_array = []
+
+            for curr_note in note_from_chord:
+                new_note = note.Note(int(curr_note))
+                new_note.storedInstrument = instrument.Piano()
+                notes_array.append(new_note)
+            
+            new_chord = chord.Chord(notes_array)
+            new_chord.offset = offset
+            notes_output.append(new_chord)
+        
+        #if the scheme from the output is a note:
+        else:
+            new_note = note.Note(scheme)
+            new_note.offset = offset
+            new_note.storedInstrument = instrument.Piano()
+            notes_output.append(new_note)
+
+        #increase offset to avoid stacking notes
+        offset += 0.5
+    
+    midi_stream = stream.Stream(notes_output)
+    midi_stream.write('midi', fp='output.mid')
+
+#call the generate function
+if __name__ == '__main__':
+    generate()  
