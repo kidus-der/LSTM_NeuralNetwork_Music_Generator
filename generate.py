@@ -66,36 +66,25 @@ def create_model(net_input, n_names):
 
     # first layer
     model.add(LSTM(
-        256, input_shape=(net_input.shape[1], net_input.shape[2]), 
-        return_sequences= True))
+        512, input_shape=(net_input.shape[1], net_input.shape[2]), 
+        recurrent_dropout=0.3, return_sequences= True))
     # second layer
-    model.add(Dropout(0.3))
-    # third layer(second LSTM layer)
-    model.add(LSTM(256, return_sequences= True))
-    # fourth layer
-    model.add(Dropout(0.3))
-    # fifth layer
-    model.add(LSTM(256))
-    # sixth layer
+    model.add(LSTM(256, return_sequences= True, recurrent_dropout=0.3))
+    model.add(LSTM(512))
     model.add(BatchNorm())
     model.add(Dropout(0.3))
-    # seventh layer
     model.add(Dense(256))
-    # eighth layer
     model.add(Activation('relu'))
-    # ninth layer
     model.add(BatchNorm())
     model.add(Dropout(0.3))
-    # tenth layer
     model.add(Dense(n_names))
-    # eleventh layer
     model.add(Activation('softmax'))
     # compile model
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
     model.load_weights('weights-from-training.hdf5')
 
-
+    return model
 
 '''Here we have a helper function that generates the notes
 (note objects) which will be used by our model'''
@@ -104,9 +93,11 @@ def gen_notes(model, net_input, pitchnames, n_names):
 
     # pick a random sequence from the input as a starting point for the prediction
     start = np.random.randint(0, len(net_input)-1)
+    int_to_pitcj = dict((number, note) for number, note in enumerate(pitchnames))
 
     # define the sequence length and the note pattern
     note_pattern = net_input[start]
+    predict_output = []
 
     # generate notes
     for note_index in range(500):
@@ -120,14 +111,15 @@ def gen_notes(model, net_input, pitchnames, n_names):
 
         # get the index of the note with the highest probability
         index = np.argmax(prediction)
-
         # get the note with the highest probability
         result = pitchnames[index]
+        predict_output.append(result)
 
         # add the note to the output
         note_pattern.append(index)
+        note_pattern = note_pattern[1:len(note_pattern)]
 
-    return note_pattern
+    return predict_output
 
 '''below we convert prtediction output to note objects
  then create a MIDI file'''

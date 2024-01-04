@@ -15,7 +15,7 @@ from keras.callbacks import ModelCheckpoint
 
 def train_model():
 
-    notes_array = get_notes()
+    notes_array = get_notes()  #here is our problem
     n_names = len(set(notes_array))
     net_input, net_output = prep_sequences(notes_array, n_names)
     model = create_model(net_input, n_names)
@@ -50,7 +50,7 @@ def get_notes():
         # as a string
         for element in parsed_notes:
             if isinstance(element, note.Note):
-                notes_array.append(str(element, note.Note))
+                notes_array.append(str(element.pitch))
             elif isinstance(element, chord.Chord):
                 notes_array.append('.'.join(str(n) for n in element.normalOrder))
 
