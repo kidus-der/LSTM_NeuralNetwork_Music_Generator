@@ -16,6 +16,14 @@ from keras.callbacks import ModelCheckpoint
 def train_model():
 
     notes_array = get_notes()  #here is our problem
+    notes_array = get_notes()
+
+    if not notes_array:
+        print("No notes parsed")
+        return
+
+    n_names = len(set(notes_array))
+
     n_names = len(set(notes_array))
     net_input, net_output = prep_sequences(notes_array, n_names)
     model = create_model(net_input, n_names)
